@@ -38,12 +38,13 @@ class Gutendex:
         if formats is None:
             return False
 
-        pdf = get_safe_value_from_dict(formats, Gutendex.Params.Formats.pdf)
-        epub = get_safe_value_from_dict(formats, Gutendex.Params.Formats.epub)
+        pdf = str(get_safe_value_from_dict(formats, Gutendex.Params.Formats.pdf))
+        epub = str(get_safe_value_from_dict(formats, Gutendex.Params.Formats.epub))
 
         if pdf is None and epub is None:
             return False
-
+        elif epub.endswith("zip") and pdf is None:  # sometimes application/epub+zip provides zips. we ignore them
+            return False
         return True
 
     @staticmethod
@@ -53,12 +54,18 @@ class Gutendex:
         epub = get_safe_value_from_dict(formats, Gutendex.Params.Formats.epub)
 
         if epub is not None:
-            filename = epub.split("/")[-1]
-            local_file = download(epub, filename, LOCAL_FOLDER_BOOKS)
-            s3_key = f"{S3_FOLDER_BOOKS}/{filename}"
-            result = upload_s3(local_file, s3_key)
+            file = epub
+            type = "epub"
+        else:
+            file = pdf
+            type = "pdf"
 
-            return None if not result else s3_key
+        filename = file.split("/")[-1]
+        local_file = download(file, filename, LOCAL_FOLDER_BOOKS)
+        s3_key = f"{S3_FOLDER_BOOKS}/{filename}"
+        result = upload_s3(local_file, s3_key)
+
+        return None if not result else (type, s3_key)
 
     @staticmethod
     def parse_single_author(author):
@@ -99,13 +106,14 @@ class Gutendex:
 
         p_book.title = book[Gutendex.Params.title]
 
-        book_url = Gutendex.generate_book_file(book)
+        file_type, book_url = Gutendex.generate_book_file(book)
 
         if book_url is None:
             print("Error: uploading to s3. Aborting Script.")
             quit()
 
         p_book.file_url = book_url
+        p_book.file_type = file_type
 
         _ = get_safe_value_from_dict(book, Gutendex.Params.copyright)
         p_book.copyright = _ if _ is not None else False
