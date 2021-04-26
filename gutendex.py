@@ -28,6 +28,7 @@ class Gutendex:
         class Formats:
             epub = "application/epub+zip"
             pdf = "application/pdf"
+            image = "image/"
 
     @staticmethod
     def is_valid_book(book):
@@ -48,24 +49,67 @@ class Gutendex:
         return True
 
     @staticmethod
-    def generate_book_file(book):
+    def generate_pdf_cover_url(book):
+        formats = dict(get_safe_value_from_dict(book, Gutendex.Params.formats))
+        remote_cover = None
+
+        for k in formats.keys():
+            if str(k).startswith(Gutendex.Params.Formats.image):
+                remote_cover = formats[k]
+                break
+
+        if remote_cover is None:
+            return None
+
+        filename = remote_cover.split("/")[-1]
+        local_file = download(remote_cover, filename, LOCAL_FOLDER_COVERS)
+        s3_key = f"{S3_FOLDER_COVERS}/{filename}"
+
+        result = upload_s3(local_file, s3_key)
+
+        if result:
+            print("Generated cover img from pdf", s3_key)
+        return None if not result else s3_key
+
+    @staticmethod
+    def generate_epub_cover_url(epub_filename, local_epub_path):
+        pil = Image.open(get_epub_cover(local_epub_path))
+
+        img_filename = f"{epub_filename}.{str(pil.format).lower()}"
+        local_cover = f"{LOCAL_FOLDER_COVERS}/{img_filename}"
+        pil.save(local_cover)
+
+        s3_key = f"{S3_FOLDER_COVERS}/{img_filename}"
+        result = upload_s3(local_cover, s3_key)
+
+        return None if not result else s3_key
+
+    @staticmethod
+    def generate_book_file_and_cover(book):
         formats = get_safe_value_from_dict(book, Gutendex.Params.formats)
         pdf = get_safe_value_from_dict(formats, Gutendex.Params.Formats.pdf)
         epub = get_safe_value_from_dict(formats, Gutendex.Params.Formats.epub)
+        s3_book_cover_key = None
 
         if epub is not None:
             file = epub
-            type = "epub"
+            file_type = "epub"
         else:
             file = pdf
-            type = "pdf"
+            file_type = "pdf"
 
         filename = file.split("/")[-1]
         local_file = download(file, filename, LOCAL_FOLDER_BOOKS)
         s3_key = f"{S3_FOLDER_BOOKS}/{filename}"
-        result = upload_s3(local_file, s3_key)
 
-        return None if not result else (type, s3_key)
+        if file_type == "epub":
+            s3_book_cover_key = Gutendex.generate_epub_cover_url(filename, local_file)
+
+        if s3_book_cover_key is None or file_type == "pdf":
+            s3_book_cover_key = Gutendex.generate_pdf_cover_url(book)
+
+        result = upload_s3(local_file, s3_key)
+        return None if not result else (file_type, s3_key, s3_book_cover_key)
 
     @staticmethod
     def parse_single_author(author):
@@ -106,7 +150,7 @@ class Gutendex:
 
         p_book.title = book[Gutendex.Params.title]
 
-        file_type, book_url = Gutendex.generate_book_file(book)
+        file_type, book_url, book_cover_url = Gutendex.generate_book_file_and_cover(book)
 
         if book_url is None:
             print("Error: uploading to s3. Aborting Script.")
@@ -114,6 +158,7 @@ class Gutendex:
 
         p_book.file_url = book_url
         p_book.file_type = file_type
+        p_book.cover_image_url = book_cover_url
 
         _ = get_safe_value_from_dict(book, Gutendex.Params.copyright)
         p_book.copyright = _ if _ is not None else False
