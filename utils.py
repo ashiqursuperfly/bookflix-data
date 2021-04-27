@@ -4,8 +4,6 @@ import boto3
 import os
 import zipfile
 from lxml import etree
-from PIL import Image
-
 
 def upload_s3(local_file_path, s3_key):
     s3 = boto3.client(
@@ -68,3 +66,9 @@ def get_epub_cover(epub_path):
         print("Path of cover image found: " + cover_path)
 
         return z.open(cover_path)
+
+
+def write_file(filepath, contents):
+    f = open(filepath, "w")
+    f.write(contents)
+    f.close()

@@ -2,9 +2,11 @@ from utils import *
 import requests
 from prisma_output import *
 import jsonpickle
+from PIL import Image
 
 LOCAL_FOLDER_BOOKS = "books"
 LOCAL_FOLDER_COVERS = "covers"
+LOCAL_FOLDER_JSON_DUMPS = "dumps"
 
 S3_FOLDER_BOOKS = "books"
 S3_FOLDER_COVERS = "book-covers"
@@ -19,6 +21,7 @@ class Gutendex:
         authors = "authors"
         copyright = "copyright"
         subjects = "subjects"
+        bookshelves = "bookshelves"
         formats = "formats"
 
         name = "name"
@@ -121,13 +124,29 @@ class Gutendex:
 
         p_author.create = PrismaCreateAuthor()
         p_author.create.name = _
-        p_author.create.birth_year = get_safe_value_from_dict(author, Gutendex.Params.birth_year)
-        p_author.create.death_year = get_safe_value_from_dict(author, Gutendex.Params.death_year)
+        p_author.create.birthYear = get_safe_value_from_dict(author, Gutendex.Params.birth_year)
+        p_author.create.deathYear = get_safe_value_from_dict(author, Gutendex.Params.death_year)
 
         p_author.where = PrismaWhere()
         p_author.where.name = _
 
         return p_author
+
+    @staticmethod
+    def parse_genres(book):
+        _ = get_safe_value_from_dict(book, Gutendex.Params.bookshelves)
+        book_shelves = _ if _ is not None else list()
+        p_genres = PrismaGenres()
+
+        for item in book_shelves:
+            p_genre = PrismaGenresConnectOrCreate()
+            p_genre.create = PrismaWhere()
+            p_genre.create.name = item
+            p_genre.where = PrismaWhere()
+            p_genre.where.name = item
+            p_genres.connectOrCreate.append(p_genre)
+
+        return p_genres
 
     @staticmethod
     def parse_authors(book):
@@ -137,7 +156,7 @@ class Gutendex:
         for author in authors:
             p_author = Gutendex.parse_single_author(author)
             if p_author is not None:
-                p_authors.connect_or_create.append(p_author)
+                p_authors.connectOrCreate.append(p_author)
 
         return p_authors
 
@@ -156,14 +175,15 @@ class Gutendex:
             print("Error: uploading to s3. Aborting Script.")
             quit()
 
-        p_book.file_url = book_url
-        p_book.file_type = file_type
-        p_book.cover_image_url = book_cover_url
+        p_book.fileUrl = book_url
+        p_book.fileType = file_type
+        p_book.coverImageUrl = book_cover_url
 
         _ = get_safe_value_from_dict(book, Gutendex.Params.copyright)
         p_book.copyright = _ if _ is not None else False
 
         p_book.authors = Gutendex.parse_authors(book)
+        p_book.genres = Gutendex.parse_genres(book)
 
         return p_book
 
@@ -178,5 +198,11 @@ class Gutendex:
         books = data[Gutendex.Params.results]
         print(f"Page: {page} Book Count: {len(books)}")
 
-        p_book = Gutendex.parse_single_book(books[0])
-        print(jsonpickle.encode(p_book, unpicklable=False))
+        p_books = list()
+        i = 0
+        for book in books[0:10]:
+            print("Book:", i)
+            p_book = Gutendex.parse_single_book(book)
+            p_books.append(p_book)
+            i += 1
+        write_file(f"{LOCAL_FOLDER_JSON_DUMPS}/{page}.json", jsonpickle.encode(p_books, unpicklable=False))
