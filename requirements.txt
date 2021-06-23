@@ -1,0 +1,6 @@
+requests>=2.25.1,<2.26
+python-dotenv>=0.18.0,<0.19
+lxml>=4.6.3,<4.7
+jsonpickle>=2.0.0,<2.1
+boto3>=1.17.98,<1.18
+Pillow>=8.2.0,<8.3

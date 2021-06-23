@@ -5,6 +5,7 @@ import os
 import zipfile
 from lxml import etree
 
+
 def upload_s3(local_file_path, s3_key):
     s3 = boto3.client(
         's3',
