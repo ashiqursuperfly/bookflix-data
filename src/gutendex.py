@@ -97,11 +97,12 @@ class Gutendex:
         if epub is not None:
             file = epub
             file_type = "epub"
+            filename = file.split("/")[-1] + '.epub'
         else:
             file = pdf
             file_type = "pdf"
+            filename = file.split("/")[-1]
 
-        filename = file.split("/")[-1]
         local_file = download(file, filename, LOCAL_FOLDER_BOOKS)
         s3_key = f"{S3_FOLDER_BOOKS}/{filename}"
 
@@ -200,7 +201,7 @@ class Gutendex:
 
         p_books = list()
         i = 0
-        for book in books[0:10]:
+        for book in books:
             print("Book:", i)
             p_book = Gutendex.parse_single_book(book)
             p_books.append(p_book)
