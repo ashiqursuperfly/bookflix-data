@@ -9,7 +9,7 @@ LOCAL_FOLDER_JSON_DUMPS = "dumps"
 
 if __name__ == "__main__":
     load_dotenv()
-    for page in range(9, 11):
+    for page in range(10, 11):
         books = Gutendex.get_gutendex_books(page)
         print(f"Page: {page} Book Count: {len(books)}")
         p_books = list()
