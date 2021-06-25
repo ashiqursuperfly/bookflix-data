@@ -98,10 +98,12 @@ class Gutendex:
             file = epub
             file_type = "epub"
             filename = file.split("/")[-1] + '.epub'
-        else:
+        elif pdf is not None:
             file = pdf
             file_type = "pdf"
             filename = file.split("/")[-1]
+        else:
+            return None
 
         local_file = download(file, filename, LOCAL_FOLDER_BOOKS)
         s3_key = f"{S3_FOLDER_BOOKS}/{filename}"
@@ -170,11 +172,14 @@ class Gutendex:
 
         p_book.title = book[Gutendex.Params.title]
 
-        file_type, book_url, book_cover_url = Gutendex.generate_book_file_and_cover(book)
+        book_tuple = Gutendex.generate_book_file_and_cover(book)
+
+        if book_tuple is None:
+            return None
+        file_type, book_url, book_cover_url = book_tuple
 
         if book_url is None:
-            print("Error: uploading to s3. Aborting Script.")
-            quit()
+            return None
 
         p_book.fileUrl = book_url
         p_book.fileType = file_type
@@ -204,6 +209,7 @@ class Gutendex:
         for book in books:
             print("Book:", i)
             p_book = Gutendex.parse_single_book(book)
-            p_books.append(p_book)
+            if p_book is not None:
+                p_books.append(p_book)
             i += 1
         write_file(f"{LOCAL_FOLDER_JSON_DUMPS}/{page}.json", jsonpickle.encode(p_books, unpicklable=False))
