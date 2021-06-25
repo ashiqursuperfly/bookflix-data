@@ -1,12 +1,11 @@
-from utils import *
 import requests
-from prisma_output import *
-import jsonpickle
 from PIL import Image
+
+from prisma_output import *
+from utils import *
 
 LOCAL_FOLDER_BOOKS = "books"
 LOCAL_FOLDER_COVERS = "covers"
-LOCAL_FOLDER_JSON_DUMPS = "dumps"
 
 S3_FOLDER_BOOKS = "books"
 S3_FOLDER_COVERS = "book-covers"
@@ -201,15 +200,4 @@ class Gutendex:
             print(f"No Results in Page: {page}")
             return
 
-        books = data[Gutendex.Params.results]
-        print(f"Page: {page} Book Count: {len(books)}")
-
-        p_books = list()
-        i = 0
-        for book in books:
-            print("Book:", i)
-            p_book = Gutendex.parse_single_book(book)
-            if p_book is not None:
-                p_books.append(p_book)
-            i += 1
-        write_file(f"{LOCAL_FOLDER_JSON_DUMPS}/{page}.json", jsonpickle.encode(p_books, unpicklable=False))
+        return data[Gutendex.Params.results]

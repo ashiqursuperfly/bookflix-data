@@ -58,6 +58,13 @@ class PrismaBook:
     fileUrl: str
     fileType: str
     coverImageUrl: str
+    description: str
+    rating: float
+    maturityRating: str
+    isbn10: str
+    isbn13: str
+    yearPublished: str
+    publisher: str
     authors: PrismaAuthors
     genres: PrismaGenres
 
@@ -69,3 +76,11 @@ class PrismaBook:
         self.coverImageUrl = cover_image_url
         self.authors = authors
         self.genres = genres
+
+    def get_first_author(self):
+        if self.authors is not None:
+            if self.authors.connectOrCreate is not None and len(self.authors.connectOrCreate) > 0:
+                author: PrismaAuthorsConnectOrCreate = self.authors.connectOrCreate[0]
+                return author.create.name
+
+        return None

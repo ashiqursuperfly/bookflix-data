@@ -14,9 +14,11 @@ def upload_s3(local_file_path, s3_key):
     )
 
     bucket_name = os.getenv("AWS_STORAGE_BUCKET_NAME")
-
     try:
-        s3.upload_file(local_file_path, bucket_name, s3_key)
+        if os.environ.get('DEBUG') == '0':
+            s3.upload_file(local_file_path, bucket_name, s3_key)
+        else:
+            print("DEBUG-S3-Upload")
     except ClientError as e:
         print(f"failed uploading to s3 {e}")
         return False
@@ -33,7 +35,10 @@ def get_safe_value_from_dict(data, key):
 def download(url: str, filename: str, folder: str):
     filepath = f'{folder}/{filename}'
     print(f"downloading: {url}")
-    filepath, headers = urllib.request.urlretrieve(url, filename=filepath)
+    if os.environ.get('DEBUG') == '0':
+        filepath, headers = urllib.request.urlretrieve(url, filename=filepath)
+    else:
+        print("DEBUG-File-Download")
     print("download file location: ", filepath)
     return filepath
 
